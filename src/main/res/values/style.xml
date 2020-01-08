@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="BelowAndWhiteActionMenuStyle" parent="Widget.AppCompat.Light.PopupMenu.Overflow" >
+        <item name="android:colorBackground">@android:color/white</item>
+        <!--设置是否位于toolbar下方-->
+        <item name="overlapAnchor">false</item>
+    </style>
+</resources>
