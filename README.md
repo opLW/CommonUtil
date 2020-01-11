@@ -17,6 +17,5 @@
  
 <a id="block_3_2_1"></a>
 **BookMark**
- - 简介
- 
- - 详细介绍文章
+ - 详细介绍文章 
+ [Android自定义控件 -- 仿书签（Kotlin）](https://blog.csdn.net/qq_36518248/article/details/103879566)
