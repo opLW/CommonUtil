@@ -1,4 +1,4 @@
-package com.oplw.test
+package com.oplw.common.customview.view
 
 import android.content.Context
 import android.graphics.*
@@ -6,6 +6,9 @@ import android.os.Looper
 import android.util.AttributeSet
 import android.util.Log
 import android.widget.TextView
+
+// 需前往value/attrs.xml文件中获取相应的styleable
+import com.oplw.common.R
 
 /**
  *
