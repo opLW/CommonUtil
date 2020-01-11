@@ -16,10 +16,11 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import androidx.cardview.widget.CardView
-import com.oplw.common.R
-import com.oplw.common.base.BaseAnimatorListener
-import com.oplw.common.util.BlurUtil
 import kotlin.math.abs
+
+// 需前往value/attrs.xml文件中获取相应的styleable，以及引入BlurUtil.kt
+import com.oplw.common.R
+import com.oplw.common.util.BlurUtil
 
 /**
  *
@@ -35,67 +36,69 @@ class ChainLayout @JvmOverloads constructor(
     private val headVisibleHeight: Int
     private val headHideHeight: Int
     private val headBackgroundColor: Int
-    /**
-     * 是否需要Head的底部部分
-     */
-    private val needHeadBottom: Boolean
-    private val headBottomMarkColor: Int
-    private val headBottomMarkHeight: Int
+    private val showMarkAndCircle: Boolean
+    private val headBottomMaskColor: Int
+    private val headBottomMaskHeight: Int
     /**
      * 取值范围: [-1f, 1f]。
      * [-1f, 0] 代表向右边倾斜，值越小越倾斜
      * [0, 1f] 代表向左边倾斜，值越大越倾斜
      */
-    private var headBottomMarkSlope: Float
-    private var headBottomIvElevation: Int
+    private var headBottomMaskSlope: Float
+    private val circleIvElevation: Int
+    private val circleIvMarginB: Int
+    private val circleIvMarginH: Int
+    private val circleIvSize: Int
 
+    /**
+     * 当隐藏部分剩下多少时，触发图片放大功能
+     */
+    private val startScaleHeightHidden: Float
+    /**
+     * 将图片放大的函数对外开放
+     */
+    var scaleCalculator: ScaleCalculator
+
+    // 手指上一次触摸的点
     private var lastY = 0f
+    // Head当前向上的偏移量
     private var curTranslationY = 0f
     private var isHeadChanged = false
-    private val headBottomIvSize: Int
-        get() {
-            return headBottomMarkHeight * 15 / 16
-        }
 
     // scrollView的直接子容器
     private lateinit var mainContainer: LinearLayout
     // headBackgroundIv的背景图片需要特殊处理，所以对外隐蔽
     private lateinit var headBackgroundIv: ImageView
-    // headBottomIv的背景图不需要特殊处理，直接向外暴露
-    lateinit var headBottomIv: ImageView
+    /**
+     * circleIv的背景图不需要特殊处理，直接向外暴露;
+     * 注意:当showMarkAndCircle为false时，circleIv不会被初始化。
+     */
+    lateinit var circleIv: ImageView
         private set
 
     init {
-        val typeArray = context.obtainStyledAttributes(attributeSet, R.styleable.ChainLayout)
-        headVisibleHeight =
-            typeArray.getDimensionPixelSize(R.styleable.ChainLayout_headVisibleHeight, 600)
-        headHideHeight =
-            typeArray.getDimensionPixelSize(R.styleable.ChainLayout_headHideHeight, 200)
-        headBackgroundColor =
-            typeArray.getColor(R.styleable.ChainLayout_headBackgroundColor, Color.WHITE)
-        needHeadBottom =
-            typeArray.getBoolean(R.styleable.ChainLayout_needHeadBottom, true)
-        headBottomMarkColor =
-            typeArray.getColor(R.styleable.ChainLayout_headBottomMarkColor, Color.WHITE)
-        setBackgroundColor(headBottomMarkColor)
-        headBottomMarkHeight =
-            typeArray.getDimensionPixelSize(R.styleable.ChainLayout_headBottomMarkHeight, 250)
-        headBottomMarkSlope =
-            typeArray.getFraction(R.styleable.ChainLayout_headBottomMarkSlope, 1, 1, 0.5f)
-        makeSuitableSlope()
-        headBottomIvElevation =
-            typeArray.getDimensionPixelSize(R.styleable.ChainLayout_headBottomIvElevation, 20)
-        typeArray.recycle()
+        val a = context.obtainStyledAttributes(attributeSet, R.styleable.ChainLayout)
+        headVisibleHeight = a.getDimensionPixelSize(R.styleable.ChainLayout_headVisibleHeight, 600)
+        headHideHeight = a.getDimensionPixelSize(R.styleable.ChainLayout_headHideHeight, 200)
+        headBackgroundColor = a.getColor(R.styleable.ChainLayout_headBackgroundColor, Color.WHITE)
+        showMarkAndCircle = a.getBoolean(R.styleable.ChainLayout_showMarkAndCircle, true)
+        headBottomMaskColor = a.getColor(R.styleable.ChainLayout_headBottomMaskColor, Color.WHITE)
+        headBottomMaskHeight = a.getDimensionPixelSize(R.styleable.ChainLayout_headBottomMaskHeight, 250)
+        headBottomMaskSlope = a.getFraction(R.styleable.ChainLayout_headBottomMaskSlope, 1, 1, 0.5f)
+        circleIvElevation = a.getDimensionPixelSize(R.styleable.ChainLayout_circleIvElevation, 20)
+        circleIvSize = a.getDimensionPixelSize(R.styleable.ChainLayout_circleIvSize, 250)
+        circleIvMarginH = a.getDimensionPixelSize(R.styleable.ChainLayout_circleIvMarginH, 80)
+        circleIvMarginB = a.getDimensionPixelSize(R.styleable.ChainLayout_circleIvMarginB, 20)
+        a.recycle()
 
-        initMainContainer()
-    }
-
-    private fun makeSuitableSlope() {
-        if (headBottomMarkSlope > 1f) {
-            headBottomMarkSlope = 1f
-        } else if (headBottomMarkSlope < -1f) {
-            headBottomMarkSlope = -1f
+        startScaleHeightHidden = headHideHeight / 2f
+        scaleCalculator = object: ScaleCalculator{
+            override fun calculate(factor: Float): Float {
+                // 利用tan函数，使得放大效果逐渐明显，同时除于5避免放大效果太明显
+                return Math.tan(factor.toDouble()).toFloat() / 5
+            }
         }
+        initMainContainer()
     }
 
     private fun initMainContainer() {
@@ -107,6 +110,7 @@ class ChainLayout @JvmOverloads constructor(
             LinearLayout.LayoutParams.WRAP_CONTENT
         )
 
+        // 调用ScrollView的addView方法，添加唯一子View：mainContainer
         super.addView(mainContainer, -1, layoutParams)
 
         initInherentHead()
@@ -121,7 +125,9 @@ class ChainLayout @JvmOverloads constructor(
 
         addBackgroundImageView(headView)
 
-        addBottomMark(headView)
+        addBottomMask(headView)
+
+        addCircleIv(headView)
 
         mainContainer.addView(headView)
     }
@@ -135,45 +141,42 @@ class ChainLayout @JvmOverloads constructor(
         headView.addView(headBackgroundIv)
     }
 
-    private fun addBottomMark(headView: FrameLayout) {
-        if (!needHeadBottom) return
+    private fun addBottomMask(headView: FrameLayout) {
+        if (!showMarkAndCircle) return
 
-        val lp1 = LayoutParams(LayoutParams.MATCH_PARENT, headBottomMarkHeight)
+        val lp1 = LayoutParams(LayoutParams.MATCH_PARENT, headBottomMaskHeight)
         lp1.gravity = Gravity.BOTTOM
         val frameLayout = MyFrameLayout(context)
         frameLayout.layoutParams = lp1
         frameLayout.setBackgroundColor(Color.TRANSPARENT)
 
-        addCircleIv(frameLayout)
-
         headView.addView(frameLayout)
     }
 
     private fun addCircleIv(frameLayout: FrameLayout) {
-        val lp2 = LayoutParams(headBottomIvSize, headBottomIvSize)
-        if (headBottomMarkSlope > 0f) {
-            lp2.marginStart = 100
-            lp2.gravity = Gravity.CENTER_VERTICAL.or(Gravity.START)
+        if (!showMarkAndCircle) return
+
+        val lp2 = LayoutParams(circleIvSize, circleIvSize)
+        if (headBottomMaskSlope > 0f) {
+            lp2.marginStart = circleIvMarginH
+            lp2.gravity = Gravity.BOTTOM.or(Gravity.START)
         } else {
-            lp2.marginEnd = 100
-            lp2.gravity = Gravity.CENTER_VERTICAL.or(Gravity.END)
+            lp2.marginEnd = circleIvMarginH
+            lp2.gravity = Gravity.BOTTOM.or(Gravity.END)
         }
+        lp2.bottomMargin = circleIvMarginB
 
         val cardView = CardView(context)
         with(cardView) {
             layoutParams = lp2
-            radius = headBottomIvSize.toFloat() / 2
-            cardElevation = headBottomIvElevation.toFloat()
+            radius = circleIvSize.toFloat() / 2
+            cardElevation = circleIvElevation.toFloat()
         }
 
-        headBottomIv = ImageView(context)
-        cardView.addView(headBottomIv)
+        circleIv = ImageView(context)
+        cardView.addView(circleIv)
 
         frameLayout.addView(cardView)
-    }
-
-    fun setCustomPartBGColor(color: Int) {
-        setBackgroundColor(color)
     }
 
     fun setHBackgroundDrawable(drawable: Drawable, blurRadius: Float = 5f) {
@@ -235,6 +238,7 @@ class ChainLayout @JvmOverloads constructor(
     }
 
     override fun onLayout(changed: Boolean, l: Int, t: Int, r: Int, b: Int) {
+        // 布局开始时，需让Head部分为默认状态
         changeHeadToDefaultStatus(false)
         super.onLayout(changed, l, t, r, b)
     }
@@ -244,12 +248,13 @@ class ChainLayout @JvmOverloads constructor(
 
         val deltaY = ev.y - lastY
         lastY = ev.y
-        // ( 控件到达顶部时继续向下拉 | 控件的头部处在变化中 ) 这两种情况需要将滑动事件拦截
+        // ( 在默认状态下继续向下拉动 | Head处在变化中 ) 这两种情况需要将滑动事件拦截
         if (ev.action == MotionEvent.ACTION_MOVE && (scrollY == 0 && deltaY > 0 || isHeadChanged)) {
             changeHeadStatus(deltaY)
             return true
         }
 
+        // 用户松开手指并且Head被拉动过，此时需要恢复至默认状态。
         if (ev.action == MotionEvent.ACTION_UP && isHeadChanged) {
             changeHeadToDefaultStatus(true)
             return true
@@ -272,14 +277,20 @@ class ChainLayout @JvmOverloads constructor(
         }
 
         mainContainer.translationY = curTranslationY
-        if (curTranslationY > -headHideHeight / 3) {
-            val scale = curTranslationY * 2 / headHideHeight + 1
-            headBackgroundIv.scaleX = 1 + scale / 4
-            headBackgroundIv.scaleY = 1 + scale / 4
+        // 此时的TranslationY还是负值并且由于向下拉动还在不断向0靠近，直至为0
+        if (curTranslationY > -startScaleHeightHidden) {
+            val factor = 1 - (curTranslationY / -startScaleHeightHidden)
+            val scale = scaleCalculator.calculate(factor)
+            headBackgroundIv.scaleX = 1 + scale
+            headBackgroundIv.scaleY = 1 + scale
         }
         isHeadChanged = true
     }
 
+    /**
+     * 将Head设置为默认值，主要将Head的translationY设置为负，达到隐藏部分Head的目的。
+     * @param needShowAnimation 是否使用动画，让变化更加自然。
+     */
     private fun changeHeadToDefaultStatus(needShowAnimation: Boolean) {
         if (needShowAnimation) {
             makeAnimator()
@@ -307,7 +318,13 @@ class ChainLayout @JvmOverloads constructor(
             headBackgroundIv.scaleX = scale
             headBackgroundIv.scaleY = scale
         }
-        valueAnimator.addListener(object : BaseAnimatorListener() {
+        valueAnimator.addListener(object : Animator.AnimatorListener {
+            override fun onAnimationRepeat(animation: Animator?) {}
+
+            override fun onAnimationCancel(animation: Animator?) {}
+
+            override fun onAnimationStart(animation: Animator?) {}
+
             override fun onAnimationEnd(animation: Animator?) {
                 curTranslationY = -headHideHeight.toFloat()
             }
@@ -315,15 +332,20 @@ class ChainLayout @JvmOverloads constructor(
         valueAnimator.start()
     }
 
+    /**
+     * 自定义FrameLayout，重写onDraw方法，实现梯形背景。
+     */
     private inner class MyFrameLayout(context: Context) : FrameLayout(context) {
         val paint: Paint = Paint()
 
         init {
             with(paint) {
-                color = headBottomMarkColor
+                color = headBottomMaskColor
                 style = Paint.Style.FILL_AND_STROKE
                 isAntiAlias = true
             }
+
+            makeSuitableSlope()
         }
 
         override fun onDraw(canvas: Canvas?) {
@@ -334,17 +356,25 @@ class ChainLayout @JvmOverloads constructor(
             canvas?.drawPath(path, paint)
         }
 
+        private fun makeSuitableSlope() {
+            if (headBottomMaskSlope > 1f) {
+                headBottomMaskSlope = 1f
+            } else if (headBottomMaskSlope < -1f) {
+                headBottomMaskSlope = -1f
+            }
+        }
+
         private fun getLeftStartY(): Float {
-            return if (headBottomMarkSlope <= 0) {
+            return if (headBottomMaskSlope <= 0) {
                 0f
             } else {
-                headBottomMarkSlope * height
+                headBottomMaskSlope * height
             }
         }
 
         private fun getRightStartY(): Float {
-            return if (headBottomMarkSlope <= 0) {
-                abs(headBottomMarkSlope) * height
+            return if (headBottomMaskSlope <= 0) {
+                abs(headBottomMaskSlope) * height
             } else {
                 0f
             }
@@ -359,5 +389,15 @@ class ChainLayout @JvmOverloads constructor(
             path.close()
             return path
         }
+    }
+
+    interface ScaleCalculator {
+        /**
+         * 计算放大的倍数。
+         * 注意：由于只提供放大的功能，所以原控件的scaleX和scaleY最小为1。
+         * @param factor 值为从0到1
+         * @return 返回最终放大的倍数
+         */
+        fun calculate(factor: Float): Float
     }
 }
