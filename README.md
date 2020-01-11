@@ -13,5 +13,10 @@
      - [多状态页面管理布局 -- StatusLayout](#block_3_1_3)
      - [旋转切换页面RecyclerView布局管理器 -- CardRollingLayoutManager](#block_3_1_4)
    - View类型
-     - [仿书签 -- Bookmark](#block_3_2_1)
+     - [仿书签 -- BookMark](#block_3_2_1)
  
+<a id="block_3_2_1"></a>
+**BookMark**
+ - 简介
+ 
+ - 详细介绍文章
