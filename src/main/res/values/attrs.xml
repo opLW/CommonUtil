@@ -1,34 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <declare-styleable name="BookMark">
+        <attr name="leftClipX" format="dimension"/>
+        <attr name="rightClipX" format="dimension"/>
         <attr name="noClipCornerRadius" format="dimension"/>
-        <attr name="slope" format="fraction"/>
-        <attr name="markType" format="integer">
-            <enum name="NO_SIDE" value="0"/>
-            <enum name="CLIP_RIGHT" value="1"/>
-            <enum name="CLIP_LEFT" value="2"/>
-            <enum name="BOTH_SIDE" value="3"/>
-        </attr>
-        <attr name="text" format="string"/>
-        <attr name="textColor" format="color"/>
-        <attr name="textSize" format="dimension"/>
+        <attr name="clipCornerRadius" format="dimension"/>
         <attr name="backgroundColor" format="color"/>
-        <attr name="shadowDx" format="dimension"/>
-        <attr name="shadowDy" format="dimension"/>
+        <attr name="bShadowDx" format="float"/>
+        <attr name="bShadowDy" format="float"/>
+        <attr name="bShadowRadius" format="float"/>
+        <attr name="bShadowColor" format="color" />
         <attr name="isSinking" format="boolean" />
+        <attr name="textBlurRadius" format="float"/>
     </declare-styleable>
 
     <declare-styleable name="ChainLayout">
         <attr name="headVisibleHeight" format="dimension" />
         <attr name="headHideHeight" format="dimension" />
         <attr name="headBackgroundColor" format="color" />
-        <attr name="needHeadBottom" format="boolean" />
-        <attr name="headBottomMarkColor" format="color" />
-        <attr name="headBottomMarkHeight" format="dimension" />
-        <attr name="headBottomMarkSlope" format="fraction" />
-        <attr name="headBottomIvElevation" format="dimension" />
+        <attr name="showMarkAndCircle" format="boolean" />
+        <attr name="headBottomMaskColor" format="color" />
+        <attr name="headBottomMaskHeight" format="dimension" />
+        <attr name="headBottomMaskSlope" format="fraction" />
+        <attr name="circleIvElevation" format="dimension" />
+        <attr name="circleIvSize" format="dimension" />
+        <attr name="circleIvMarginH" format="dimension" />
+        <attr name="circleIvMarginB" format="dimension" />
     </declare-styleable>
-
     <declare-styleable name="StarsProgressBar">
         <attr name="childViewCount" format="integer" />
         <attr name="childViewColor" format="reference" />
