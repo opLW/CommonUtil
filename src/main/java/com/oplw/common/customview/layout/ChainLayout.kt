@@ -32,7 +32,7 @@ class ChainLayout @JvmOverloads constructor(
     attributeSet: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : ScrollView(context, attributeSet, defStyleAttr) {
-
+    // 静态布局相关参数
     private val headVisibleHeight: Int
     private val headHideHeight: Int
     private val headBackgroundColor: Int
@@ -49,25 +49,13 @@ class ChainLayout @JvmOverloads constructor(
     private val circleIvMarginB: Int
     private val circleIvMarginH: Int
     private val circleIvSize: Int
-
     /**
-     * 当隐藏部分剩下多少时，触发图片放大功能
+     * scrollView的直接子容器。
      */
-    private val startScaleHeightHidden: Float
-    /**
-     * 将图片放大的函数对外开放
-     */
-    var scaleCalculator: ScaleCalculator
-
-    // 手指上一次触摸的点
-    private var lastY = 0f
-    // Head当前向上的偏移量
-    private var curTranslationY = 0f
-    private var isHeadChanged = false
-
-    // scrollView的直接子容器
     private lateinit var mainContainer: LinearLayout
-    // headBackgroundIv的背景图片需要特殊处理，所以对外隐蔽
+    /**
+     * headBackgroundIv的背景图片需要特殊处理，所以通过函数向外开放。
+     */
     private lateinit var headBackgroundIv: ImageView
     /**
      * circleIv的背景图不需要特殊处理，直接向外暴露;
@@ -76,12 +64,32 @@ class ChainLayout @JvmOverloads constructor(
     lateinit var circleIv: ImageView
         private set
 
+    // 动效相关参数
+    private var lastY = 0f
+    /**
+     * Head当前向上的偏移量
+     */
+    private var curTranslationY = 0f
+    private var isHeadChanged = false
+    /**
+     * 当隐藏部分剩下多少时，触发图片放大功能
+     */
+    private val startScaleHiddenHeight: Float
+    /**
+     * 图片放大时的计算器
+     */
+    var scaleCalculator: ScaleCalculator
+    /**
+     * 下拉松开手指时，Head恢复至初始状态的插值器
+     */
+    var restoreInterpolator: TimeInterpolator
+    var restoreDuration: Long
+            
     init {
         val a = context.obtainStyledAttributes(attributeSet, R.styleable.ChainLayout)
         headVisibleHeight = a.getDimensionPixelSize(R.styleable.ChainLayout_headVisibleHeight, 600)
         headHideHeight = a.getDimensionPixelSize(R.styleable.ChainLayout_headHideHeight, 200)
         headBackgroundColor = a.getColor(R.styleable.ChainLayout_headBackgroundColor, Color.WHITE)
-        showMarkAndCircle = a.getBoolean(R.styleable.ChainLayout_showMarkAndCircle, true)
         headBottomMaskColor = a.getColor(R.styleable.ChainLayout_headBottomMaskColor, Color.WHITE)
         headBottomMaskHeight = a.getDimensionPixelSize(R.styleable.ChainLayout_headBottomMaskHeight, 250)
         headBottomMaskSlope = a.getFraction(R.styleable.ChainLayout_headBottomMaskSlope, 1, 1, 0.5f)
@@ -89,15 +97,19 @@ class ChainLayout @JvmOverloads constructor(
         circleIvSize = a.getDimensionPixelSize(R.styleable.ChainLayout_circleIvSize, 250)
         circleIvMarginH = a.getDimensionPixelSize(R.styleable.ChainLayout_circleIvMarginH, 80)
         circleIvMarginB = a.getDimensionPixelSize(R.styleable.ChainLayout_circleIvMarginB, 20)
+        showMarkAndCircle = a.getBoolean(R.styleable.ChainLayout_showMarkAndCircle, true)
         a.recycle()
-
-        startScaleHeightHidden = headHideHeight / 2f
+        
+        startScaleHiddenHeight = headHideHeight / 2f
         scaleCalculator = object: ScaleCalculator{
             override fun calculate(factor: Float): Float {
                 // 利用tan函数，使得放大效果逐渐明显，同时除于5避免放大效果太明显
                 return Math.tan(factor.toDouble()).toFloat() / 5
             }
         }
+        restoreDuration = 500
+        restoreInterpolator = OvershootInterpolator()
+        
         initMainContainer()
     }
 
@@ -146,11 +158,11 @@ class ChainLayout @JvmOverloads constructor(
 
         val lp1 = LayoutParams(LayoutParams.MATCH_PARENT, headBottomMaskHeight)
         lp1.gravity = Gravity.BOTTOM
-        val frameLayout = MyFrameLayout(context)
-        frameLayout.layoutParams = lp1
-        frameLayout.setBackgroundColor(Color.TRANSPARENT)
+        val mask = MyMask(context)
+        mask.layoutParams = lp1
+        mask.setBackgroundColor(Color.TRANSPARENT)
 
-        headView.addView(frameLayout)
+        headView.addView(mask)
     }
 
     private fun addCircleIv(frameLayout: FrameLayout) {
@@ -248,7 +260,7 @@ class ChainLayout @JvmOverloads constructor(
 
         val deltaY = ev.y - lastY
         lastY = ev.y
-        // ( 在默认状态下继续向下拉动 | Head处在变化中 ) 这两种情况需要将滑动事件拦截
+        // ( 在默认状态下继续向下拉动 | Head处在变化中 ) 这两种情况需要将滑动事件处理
         if (ev.action == MotionEvent.ACTION_MOVE && (scrollY == 0 && deltaY > 0 || isHeadChanged)) {
             changeHeadStatus(deltaY)
             return true
@@ -278,8 +290,8 @@ class ChainLayout @JvmOverloads constructor(
 
         mainContainer.translationY = curTranslationY
         // 此时的TranslationY还是负值并且由于向下拉动还在不断向0靠近，直至为0
-        if (curTranslationY > -startScaleHeightHidden) {
-            val factor = 1 - (curTranslationY / -startScaleHeightHidden)
+        if (curTranslationY > -startScaleHiddenHeight) {
+            val factor = 1 - (curTranslationY / -startScaleHiddenHeight)
             val scale = scaleCalculator.calculate(factor)
             headBackgroundIv.scaleX = 1 + scale
             headBackgroundIv.scaleY = 1 + scale
@@ -308,8 +320,8 @@ class ChainLayout @JvmOverloads constructor(
         val originalScale = headBackgroundIv.scaleX
 
         val valueAnimator = ValueAnimator.ofFloat(0f, 1f)
-        valueAnimator.interpolator = OvershootInterpolator()
-        valueAnimator.duration = 500
+        valueAnimator.interpolator = restoreInterpolator
+        valueAnimator.duration = restoreDuration
         valueAnimator.addUpdateListener {
             val fraction = it.animatedValue as Float
             mainContainer.translationY =
@@ -333,9 +345,9 @@ class ChainLayout @JvmOverloads constructor(
     }
 
     /**
-     * 自定义FrameLayout，重写onDraw方法，实现梯形背景。
+     * 自定义View，重写onDraw方法，实现梯形背景。
      */
-    private inner class MyFrameLayout(context: Context) : FrameLayout(context) {
+    private inner class MyMask(context: Context) : View(context) {
         val paint: Paint = Paint()
 
         init {
@@ -400,4 +412,3 @@ class ChainLayout @JvmOverloads constructor(
          */
         fun calculate(factor: Float): Float
     }
-}
