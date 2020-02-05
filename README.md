@@ -15,6 +15,11 @@
    - View类型
      - [仿书签 -- BookMark](#block_3_2_1)
  
+ <a id="block_3_1_1"></a>
+**ChainLayout**
+ - 详细介绍文章 
+ [Android自定义控件 -- 仿Tim个人主页布局](https://blog.csdn.net/qq_36518248/article/details/103931927)
+ 
 <a id="block_3_2_1"></a>
 **BookMark**
  - 详细介绍文章 
