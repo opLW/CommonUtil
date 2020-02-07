@@ -40,9 +40,11 @@ class ChainLayout @JvmOverloads constructor(
     private val headBottomMaskColor: Int
     private val headBottomMaskHeight: Int
     /**
-     * 取值范围: [-1f, 1f]。
-     * [-1f, 0] 代表向右边倾斜，值越小越倾斜
-     * [0, 1f] 代表向左边倾斜，值越大越倾斜
+     * 取值范围: `-1f, 1f`的闭区间。
+     *
+     * `-1f, 0`的闭区间代表向右边倾斜，值越小越倾斜
+     *
+     * `0, 1f`的闭区间代表向左边倾斜，值越大越倾斜
      */
     private var headBottomMaskSlope: Float
     private val circleIvElevation: Int
@@ -59,7 +61,8 @@ class ChainLayout @JvmOverloads constructor(
     private lateinit var headBackgroundIv: ImageView
     /**
      * circleIv的背景图不需要特殊处理，直接向外暴露;
-     * 注意:当showMarkAndCircle为false时，circleIv不会被初始化。
+     *
+     * **注意**: 当showMarkAndCircle为false时，circleIv不会被初始化。
      */
     lateinit var circleIv: ImageView
         private set
@@ -406,7 +409,8 @@ class ChainLayout @JvmOverloads constructor(
     interface ScaleCalculator {
         /**
          * 计算放大的倍数。
-         * 注意：由于只提供放大的功能，所以原控件的scaleX和scaleY最小为1。
+         *
+         * **注意**：由于只提供放大的功能，所以原控件的scaleX和scaleY最小为1。
          * @param factor 值为从0到1
          * @return 返回最终放大的倍数
          */

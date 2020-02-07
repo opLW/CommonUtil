@@ -41,9 +41,10 @@ class BookMark @JvmOverloads constructor(
     private val bShadowRadius: Float
     private val bShadowColor: Int
 
-    /*
-    记录控件初始化时各个padding的大小，
-    避免由于系统多次measure导致多次调用setPaddingToDrawBG，影响初始padding的大小。
+    /**
+     * 记录控件初始化时paddingLeft的大小,避免由于系统多次measure导致多次调用setPaddingToDrawBG，影响初始paddingLeft的大小。
+     *
+     * 同理还有[paddingT],[paddingR],[paddingB]
      */
     private val paddingL: Int
     private val paddingT: Int
@@ -74,7 +75,8 @@ class BookMark @JvmOverloads constructor(
 
     /**
      * 内容物的左边界，边界右侧为不受裁剪影响部分，即安全区域。
-     * 同理的还有contentBorderT、contentBorderR、contentBorderB
+     *
+     * 同理的还有[contentBorderT]、[contentBorderR]、[contentBorderB]
      */
     private val contentBorderL: Float
         get() {
@@ -174,6 +176,7 @@ class BookMark @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas?) {
         drawBackground(canvas)
 
+        // 接下来要绘制文字，所以修改画笔的遮罩来使字体模糊
         if (isSinking) {
             getPaint().maskFilter = blurMask
         } else {
