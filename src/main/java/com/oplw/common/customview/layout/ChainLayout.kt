@@ -258,6 +258,23 @@ class ChainLayout @JvmOverloads constructor(
         super.onLayout(changed, l, t, r, b)
     }
 
+    override fun onInterceptTouchEvent(ev: MotionEvent?): Boolean {
+        if (null == ev) return true
+
+        //ACTION_DOWN首次到来时记录位置
+        if (ev.action == MotionEvent.ACTION_DOWN) {
+            lastY = ev.y
+        }
+        
+        // 如果前后两次位置超过2f则判定为滑动，将事件拦截 
+        val deltaY = ev.y - lastY
+        if (Math.abs(deltaY) >= 2f) {
+            return true
+        }
+
+        return super.onInterceptTouchEvent(ev)
+    }
+
     override fun onTouchEvent(ev: MotionEvent?): Boolean {
         if (ev == null) return true
 
